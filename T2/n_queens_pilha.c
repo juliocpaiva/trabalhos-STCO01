@@ -2,122 +2,132 @@
 #include <stdlib.h>
 #include "pilha.h"
 
-// Verifica se a posição da rainha é válida
-int eh_valido(int *rainhas, int linha, int coluna)
+// Estrutura para armazenar a posição de cada rainha
+typedef struct
 {
-    for (int i = 0; i < linha; i++)
-    {
-        if (rainhas[i] == coluna || (rainhas[i] - coluna) == (i - linha) || (rainhas[i] - coluna) == (linha - i))
-        {
-            return 0; // Falso
-        }
-    }
-    return 1; // Verdadeiro
-}
+    int linha;  // Linha onde a rainha está posicionada
+    int coluna; // Coluna onde a rainha está posicionada
+} Rainha;
 
-// Função para resolver o problema das N-Rainhas armazenando as soluções em um vetor
-void resolver_n_rainhas(int n, int ***solucoes, int *num_solucoes)
+// Função para imprimir uma solução encontrada
+void imprimir_solucao(Rainha *rainhas, int n)
 {
-    pilha p = cria_pilha(); // Cria a pilha para gerenciar o estado
-    int *rainhas = (int *)malloc(n * sizeof(int));
+    char **tabuleiro = (char **)malloc(n * sizeof(char *)); // Alocação dinâmica para o tabuleiro
     for (int i = 0; i < n; i++)
     {
-        rainhas[i] = -1; // Inicializa as rainhas como não posicionadas
+        tabuleiro[i] = (char *)malloc(n * sizeof(char)); // Alocação dinâmica para cada linha do tabuleiro
     }
 
-    int linha = 0; // Começa na linha 0
+    // Inicializa o tabuleiro com espaços vazios representados por '_'
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            tabuleiro[i][j] = '_';
 
-    while (linha >= 0)
+    // Coloca as rainhas no tabuleiro com base nas posições armazenadas
+    for (int i = 0; i < n; i++)
     {
-        int coluna;
-        for (coluna = rainhas[linha] + 1; coluna < n; coluna++)
-        {
-            if (eh_valido(rainhas, linha, coluna))
-            {
-                rainhas[linha] = coluna; // Coloca a rainha na coluna válida
-                break;                   // Sai do loop se encontrou uma coluna válida
-            }
-        }
-
-        if (coluna < n)
-        { // Se encontrou uma coluna válida
-            if (linha == n - 1)
-            { // Se todas as rainhas estão posicionadas
-                (*num_solucoes)++;
-                *solucoes = (int **)realloc(*solucoes, (*num_solucoes) * sizeof(int *));
-                (*solucoes)[*num_solucoes - 1] = (int *)malloc(n * sizeof(int));
-                for (int i = 0; i < n; i++)
-                {
-                    (*solucoes)[*num_solucoes - 1][i] = rainhas[i]; // Armazena a solução
-                }
-            }
-            else
-            {
-                linha++; // Passa para a próxima linha
-            }
-        }
-        else
-        {                        // Se não encontrou coluna válida
-            rainhas[linha] = -1; // Reinicia a coluna da linha atual
-            linha--;             // Volta para a linha anterior
-        }
+        tabuleiro[rainhas[i].linha][rainhas[i].coluna] = 'R'; // 'R' representa uma rainha
     }
 
-    free(rainhas);   // Libera a memória alocada
-    libera_pilha(p); // Libera a pilha, se necessário
+    // Imprime o tabuleiro
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            printf("%c ", tabuleiro[i][j]); // Imprime cada célula do tabuleiro
+        }
+        printf("\n"); // Nova linha após cada linha do tabuleiro
+    }
+    printf("\n"); // Linha em branco entre soluções
+
+    // Libera a memória alocada para o tabuleiro
+    for (int i = 0; i < n; i++)
+    {
+        free(tabuleiro[i]);
+    }
+    free(tabuleiro);
 }
 
-// Função para imprimir as soluções com 'R' para rainhas e '_' para espaços vazios
-void imprimir_solucoes(int n, int **solucoes, int num_solucoes)
+// Função para verificar se a posição (linha, coluna) é segura para colocar uma rainha
+int eh_seguro(Rainha *rainhas, int n, int linha, int coluna)
 {
-    for (int i = 0; i < num_solucoes; i++)
+    // Verifica cada rainha já colocada
+    for (int i = 0; i < linha; i++)
     {
-        for (int linha = 0; linha < n; linha++)
+        // Verifica se alguma rainha está na mesma coluna
+        // Verifica as diagonais
+        if (rainhas[i].coluna == coluna ||
+            rainhas[i].linha - rainhas[i].coluna == linha - coluna ||
+            rainhas[i].linha + rainhas[i].coluna == linha + coluna)
         {
-            for (int coluna = 0; coluna < n; coluna++)
+            return 0; // Não é seguro, pois há um ataque
+        }
+    }
+    return 1; // É seguro, nenhuma rainha ataca
+}
+
+// Função para resolver o problema das n rainhas usando pilha
+void resolver_n_rainhas(int n)
+{
+    pilha P = cria_pilha();                                 // Cria uma nova pilha para armazenar estados
+    Rainha *rainhas = (Rainha *)malloc(n * sizeof(Rainha)); // Alocação dinâmica para armazenar as posições das rainhas
+    int linha = 0, coluna = 0;                              // Variáveis para rastrear a linha e a coluna atuais
+
+    while (1)
+    {
+        // Tenta colocar uma rainha na coluna atual da linha atual
+        while (coluna < n)
+        {
+            // Verifica se é seguro colocar a rainha na posição atual
+            if (eh_seguro(rainhas, linha, linha, coluna))
             {
-                if (solucoes[i][linha] == coluna)
+                // Armazena a posição da rainha
+                rainhas[linha].linha = linha;
+                rainhas[linha].coluna = coluna;
+
+                // Se todas as rainhas foram colocadas, imprime a solução
+                if (linha == n - 1)
                 {
-                    printf("R ");
+                    imprimir_solucao(rainhas, n);
                 }
                 else
                 {
-                    printf("_ ");
+                    // Empilha o estado atual (linha atual e coluna inicial)
+                    empilhar(P, linha);
+                    linha++;    // Avança para a próxima linha
+                    coluna = 0; // Reinicia a coluna para a nova linha
+                    continue;   // Continua o loop para tentar a próxima coluna
                 }
             }
-            printf("\n");
+            coluna++; // Avança para a próxima coluna
         }
-        printf("\n");
+
+        // Se não há mais colunas para explorar na linha atual
+        // Desempilha o último estado
+        if (pilha_vazia(P))
+            break; // Se a pilha está vazia, encerra o loop
+
+        linha = desempilhar(P);             // Retorna para a linha anterior
+        coluna = rainhas[linha].coluna + 1; // Avança para a próxima coluna da linha anterior
     }
+
+    free(rainhas);   // Libera a memória alocada para as rainhas
+    libera_pilha(P); // Libera a pilha após terminar a busca por soluções
 }
 
 int main()
 {
-    int n;
+    int n; // Variável para armazenar o tamanho do tabuleiro (n x n)
     scanf("%d", &n);
 
-    if (n <= 0)
+    // Verifica se o valor de n é positivo
+    if (n < 1)
     {
-        return 1;
+        printf("Valor de n deve ser maior ou igual a 1.\n");
+        return -1; // Encerra o programa com erro
     }
 
-    int **solucoes = NULL; // Vetor de ponteiros para armazenar as soluções
-    int num_solucoes = 0;
-
-    resolver_n_rainhas(n, &solucoes, &num_solucoes);
-
-    if (num_solucoes > 0)
-    {
-        imprimir_solucoes(n, solucoes, num_solucoes);
-    }
-
-    // Libera a memória alocada para as soluções
-    for (int i = 0; i < num_solucoes; i++)
-    {
-        free(solucoes[i]);
-    }
-    free(solucoes);
-
+    resolver_n_rainhas(n); // Chama a função para resolver o problema das n rainhas
     return 0;
 }
 
